@@ -1,0 +1,359 @@
+---
+title: "plot_state_density"
+author: "Adam J Campbell"
+date: "20/05/2020"
+output: html_document
+---
+
+
+```{r}
+
+extrafont::loadfonts(device = "win")
+library(reactable)
+library(htmltools)
+library(dplyr)
+
+
+state_density <- readRDS(file="state_density.Rda")
+
+# remove DC and PR
+state_density <- state_density %>%
+  filter(!STATE %in% c("Puerto Rico","District of Columbia"))
+
+
+bar_chart <- function(label, width = "100%", height = "16px", fill = "#3fc1c9", background = NULL) {
+  bar <- div(style = list(background = fill, width = width, height = height))
+  chart <- div(style = list(flexGrow = 1, marginLeft = "16px", background = background), bar)
+  format_label <- div(style = list(width = "40px"), format(round(label, digits = 1), nsmall = 1) )
+  div(style = list(display = "flex", alignItems = "center", justifyContent = "flex-end"), format_label, chart)
+}
+
+reactable(
+  state_density,
+  pagination = FALSE,
+  defaultSorted = "lived_density", 
+  defaultColDef = colDef(align = "left", 
+                         defaultSortOrder = "desc", 
+                         style = list(fontFamily = "Fira Mono, Consolas,                                                         Monaco, monospace",
+                                      fontSize = "13.5px",
+                                      whiteSpace = "pre"),
+                         ),
+  
+  columns = list(
+    STATE = colDef(
+      name = "REGION",
+      align = "left",
+      width = 120,
+      style = list(fontFamily = "Karla, Helvetica Neue, Helvetica, Arial, sans-serif", 
+                    fontSize = "13.5px",
+                    whiteSpace = "pre"),
+      defaultSortOrder = "asc"
+
+    ),
+    state_pop = colDef(
+      name = "POPULATION",
+      align = "right", 
+      format = colFormat(digits = 0, separators = TRUE)
+     
+
+    ),
+    state_land_area = colDef(
+      name = "AREA",
+      align = "right",
+      style = list(width = "50px" ,
+                   fontFamily = "Fira Mono, Consolas, Monaco, monospace", 
+                    fontSize = "13.5px",
+                    whiteSpace = "pre",
+                    paddingRight = "30px"),
+      headerStyle = list(paddingRight = "30px"),
+     
+      format = colFormat(digits = 0, separators = TRUE)
+      
+
+    ),
+    population_density_land = colDef(
+      name = "POPULATION DENSITY",
+      format = colFormat(digits = 1, separators = TRUE),
+      align = "right", 
+      style = list(width = "50px" ,
+                   fontFamily = "Fira Mono, Consolas, Monaco, monospace",
+                    fontSize = "13.5px",
+                    whiteSpace = "pre"),
+      #minWidth = 150,
+      headerStyle = list(textAlign = "left"),
+      cell = function(value) {
+        width <- paste0(value / max(state_density$population_density_land) * 100, "%")
+        bar_chart(value, width = width, fill = "#fc5185") }
+
+    ),
+    lived_density = colDef(
+      name = "LIVED DENSITY",
+      align = "right", 
+      headerStyle = list(textAlign = "left"),
+      format = colFormat(digits = 0, separators = TRUE),
+      cell = function(value) {
+        
+        width <- paste0(value / max(state_density$lived_density) * 100, "%")
+        bar_chart(value, width = width) 
+        
+        }
+
+    ),
+    density_ratio = colDef(
+      name = "RATIO",
+      align = "right", 
+      width = 50,
+      format = colFormat(digits = 1, separators = TRUE),
+      style = list(fontFamily = "Fira Mono, Consolas, Monaco, monospace",
+                   fontSize = "13.5px",
+                   whiteSpace = "pre"),
+      defaultSortOrder = "desc"
+
+
+    )
+  ),
+  theme = reactableTheme(
+    borderColor = "#dfe2e5",
+    stripedColor = "#f6f8fa",
+    highlightColor = "#f0f5f9",
+    cellPadding = "8px 12px",
+    style = list(fontFamily = "Karla, Helvetica Neue, Helvetica, Arial, sans-serif",
+                 margin = "0px auto auto auto",
+                 fontSize = "13px",
+                 width = "750px"),
+    searchInputStyle = list(width = "100%")
+  ),
+  highlight = TRUE,
+  compact = TRUE,
+  showSortIcon = FALSE
+)
+
+
+```
+
+
+```{r}
+
+#calcuating rank for density standard and lived.
+state_density$density_rank <- rank(-state_density$population_density_land)
+state_density$lived_density_rank <- rank(-state_density$lived_density)
+
+# calculate change in rank from standard to lived density.
+state_density$rank_change <- state_density$lived_density_rank - state_density$density_rank
+
+state_density <- state_density %>%
+  mutate(change_direction = ifelse(rank_change == 0, "none", ifelse(rank_change > 0, "decrease", "increase")))
+
+```
+https://github.com/tiagombp/swd-challenges/blob/master/june-slopegraph.R
+https://ibecav.github.io/slopegraph/
+
+```{r fig.width=8, fig.height=10}
+# set plot params here
+plot_start <- 2 
+plot_end <- 5.5
+line_width <- 1
+
+purp_538 <- "#a848e3"
+blue_538 <- "#3fc1c9"
+pink_538 <- "#fc5185"
+
+legend_title <- c(expression( atop("density",(ppl/km^-2) ) ))
+title_title <- "Change in state rank of standard <span style = 'color:#fc5185;'>population</span> <span style = 'color:#fc5185;'>density</span> and <span style = 'color:#3fc1c9;'>lived density</span> "
+
+library(ggtext)
+library(ggplot2)
+library(ggrepel)
+
+
+ggplot(data = state_density) +
+  geom_segment(data = state_density %>% filter(change_direction == 'decrease') ,
+               aes(x = plot_start, 
+                   xend = plot_end, 
+                   y = density_rank, 
+                   yend = lived_density_rank
+                   ), 
+               color = pink_538,
+               size = line_width,
+               show.legend = FALSE) +
+geom_segment(data = state_density %>% filter(change_direction == 'none' ) ,
+               aes(x = plot_start, 
+                   xend = plot_end, 
+                   y = density_rank, 
+                   yend = lived_density_rank
+                   ), 
+               color = purp_538,
+               size = line_width,
+               show.legend = FALSE) +  
+  
+    geom_segment(data = state_density %>% filter(change_direction == 'increase') ,
+               aes(x = plot_start, 
+                   xend = plot_end, 
+                   y = density_rank, 
+                   yend = lived_density_rank
+                   ), 
+               color = blue_538,
+               size = line_width,
+               show.legend = FALSE) + 
+
+  geom_point(aes(x = plot_start,
+                 y = density_rank,
+                 size = population_density_land),
+             color = 'black')+
+  geom_point(aes(x = plot_end,
+                 y = lived_density_rank,
+                 size = lived_density),
+             color = "black"
+             )+
+  
+  geom_point(aes(x = plot_start,
+                 y = density_rank,
+                 size = population_density_land),
+             color = pink_538,
+             show.legend = FALSE)+
+  geom_point(aes(x = plot_end,
+                 y = lived_density_rank,
+                 size = lived_density),
+             color = blue_538,
+             show.legend = FALSE
+             #alpha = 0.7 
+             )+
+  geom_text(aes(x = plot_start,  y = density_rank, label = STATE),
+                  hjust = "right",
+                  family = "Karla",
+                  size = 4,
+                  nudge_x = -.2
+                  )+
+  geom_text(aes(x = plot_end,  y = lived_density_rank, label = STATE),
+                  hjust = "left",
+                  family = "Karla",
+                  size = 4,
+                  nudge_x = .2
+                  )+
+  annotate("text", 
+           x = plot_start -.2,  
+           y = -0.5, 
+           label = 'population density',
+           hjust = "right",
+           family = "Karla",
+           fontface = "bold",
+           color = pink_538,
+           size = 4,
+           )+
+  annotate("text", 
+           x = plot_end +.2,  
+           y = -0.5, 
+           label = 'lived density',
+           hjust = "left",
+           family = "Karla",
+           color = blue_538,
+           fontface = "bold",
+           size = 4,
+           )+
+  
+
+  labs(size = legend_title) + 
+  
+  labs(title = title_title ) +
+  xlim(-.1,10) +
+  scale_y_reverse() +
+  theme_void() +
+  
+  
+  
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_textbox_simple(
+      size = 16,
+      lineheight = 1,
+      padding = margin(20, 5.5, 0, 5.5),
+      margin = margin(0, 0, 0, 0),
+      halign = 0.5
+      #fill = "cornsilk"
+      )
+    ) + 
+  theme(legend.position=c(0.85,0.89))+ 
+  theme(text=element_text(size=12,   family='Karla')) + 
+  #theme(panel.background = element_rect(fill = "#e0e0e0"))+
+  theme(plot.background = element_rect(fill = "#f6f8fa")) 
+  #theme(plot.title = element_text(hjust = 0.5, size = 16)) 
+
+ggsave("beautiful_plot.png", device = "png", type = "cairo")
+```
+
+
+Make a simple features map
+```{r}
+library(tidyverse)  # For ggplot, dplyr, and friends
+library(sf)         # For GIS magic
+library(tmap)
+library(spData)
+
+# compute log ratio
+state_density <- state_density %>%
+  mutate(log_ratio = log(density_ratio))
+
+# load states data
+us_states <- read_sf("shapefiles/cb_2018_us_state_20m.shp")
+us_states <- us_states %>%
+    rename(STATE = NAME)
+
+
+
+# load nz data
+nz <- nz
+nz <- st_union(nz, by_feature = FALSE)
+nz <- st_as_sf(nz)
+nz <- nz %>%
+  mutate(STATE = "New Zealand")
+nz <- left_join(nz, state_density, by="STATE")
+
+```
+
+
+```{r}
+# define color scale breaks
+breaks = c(0,1,2,3,4,5)
+
+lower_48 <- us_states %>% 
+  filter(!(STATE %in% c("Alaska", "Hawaii", "Puerto Rico", "District of Columbia")))
+lower_48 <- left_join(lower_48, state_density, by="STATE")
+
+
+hawaii <- us_states %>%
+  filter(STATE == "Hawaii")
+hawaii <- left_join(hawaii, state_density, by="STATE")
+
+alaska <- us_states %>%
+  filter(STATE == "Alaska")
+alaska<- left_join(alaska, state_density, by="STATE")
+
+us_states_map = tm_shape(lower_48, projection =  2163) + 
+  tm_borders(col = "white") +
+  tm_polygons(title = "density\nfactor",col = "log_ratio", palette = "BuPu",breaks = breaks) + 
+  tm_layout(title = "where lived density is the better measure", title.position = c("center", "top"), title.fontfamily= "Karla", legend.title.fontfamily = 'Karla',  legend.text.fontfamily = 'Fira Mono', frame = FALSE, bg.color = NA,)
+
+hawaii_map = tm_shape(hawaii) + 
+  tm_borders(col = "white") +
+  tm_polygons(col = "log_ratio", breaks = breaks, palette = "BuPu") +
+  tm_layout(title = "", frame = FALSE, bg.color = NA, legend.show = FALSE)  
+
+alaska_map = tm_shape(alaska, projection = "EPSG:3338") + 
+  tm_borders(col = "white") +
+  tm_polygons(col = "log_ratio", breaks = breaks, palette = "BuPu") +
+  tm_layout(title = "", frame = FALSE, bg.color = NA, legend.show = FALSE)
+
+nz_map = tm_shape(nz, projection = "EPSG:2193") + 
+  tm_borders(col = "white") +
+  tm_polygons(col = "log_ratio", breaks = breaks, palette = "BuPu") +
+  tm_layout(title = "", frame = FALSE, bg.color = NA, legend.show = FALSE)
+
+
+# print total map
+us_states_map
+print(hawaii_map, vp = grid::viewport(0.35, 0.1, width = 0.2, height = 0.2))
+print(alaska_map, vp = grid::viewport(.17, 0.14, width = .3, height = .3))
+print(nz_map, vp = grid::viewport(.92, 0.3, width = .25, height = .25))
+```
+
+

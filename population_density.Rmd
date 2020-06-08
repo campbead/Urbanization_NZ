@@ -1,0 +1,109 @@
+---
+title: "Does densily populated is New Zealand?"
+author: "Adam J Campbell"
+date: "12 May, 2020"
+output: html_document
+---
+
+Load in USA data and libraries
+```{r Initial_Loading, warning=FALSE, message=FALSE}
+
+USA_2018_AREAS <- read.csv('data/tracts_2018.csv')
+USA_2018_POP <- read.csv('data/nhgis0002_ds239_20185_2018_tract.csv')
+
+library("tidyverse")
+library("LaplacesDemon")
+```
+
+Join the population data to the area data.  At this point, we'll filter out the records with zero area and only select a few important columns.  We'll also change the area to km<sup>2</sup>.
+
+```{r create_population_area}
+population_area <- 
+  right_join(USA_2018_POP, USA_2018_AREAS, by = "GISJOIN") %>%
+  filter(ALAND > 0) %>%   # filter out areas that have zero land area
+  mutate(LAND_AREA_km2 = ALAND / 1000000) %>%
+  select(c("STATE", "TRACTA", "AJWME001", "LAND_AREA_km2"))
+#population_area$LAND_AREA_km2 <- population_area$ALAND / 1000000
+```
+
+Now we need to load and process the New Zealand data into the format for `population_area` and append that data.
+```{r}
+NZ_data <-
+  read.csv("data/NZ_export.csv") %>%
+  filter(LAND_AREA_ > 0) %>% # filter out areas that have zero land area
+  mutate(STATE = "New Zealand") %>% # add a state 
+  rename(
+    TRACTA = SA22018_V1,
+    LAND_AREA_km2 = LAND_AREA_,
+    AJWME001 = Pop_Tota_2
+    ) %>%
+  select(c("STATE", "TRACTA", "AJWME001", "LAND_AREA_km2"))
+  
+population_area <-rbind(population_area, NZ_data)
+
+```
+
+
+Create `state_stats` which are broad summary statistics for each state (plus a few other places) including total population and total area.
+
+```{r create_state_stats}
+state_stats <-
+  population_area %>%
+  group_by(STATE) %>%
+  summarise(state_pop = sum(AJWME001), state_land_area = sum(LAND_AREA_km2)) %>%
+  ungroup()
+
+state_stats$population_density_land <- state_stats$state_pop / state_stats$state_land_area
+```
+
+Join the `state_stats` data onto the `population_area` data and calculate the fraction of population and land area each census tract occupies relative to its state.
+
+```{r join_population_area}
+population_area <-
+  left_join(population_area, state_stats, by = "STATE")
+
+population_area$land_area_frac <- population_area$LAND_AREA_km2 / population_area$state_land_area
+
+population_area$pop_frac <- population_area$AJWME001 / population_area$state_pop
+```
+
+Now we will compute the KLD sum for each state.  
+
+```{r message=FALSE, warning=FALSE}
+
+KLD_stats<-
+  population_area %>%
+  group_by(STATE) %>%
+  select(pop_frac, land_area_frac) %>%
+  summarise(KLD = KLD(pop_frac, land_area_frac)$sum.KLD.px.py)
+
+```
+
+Join `KLD_stats` to `state_stats` and compute a few fields. 
+
+```{r}
+state_stats <- inner_join(state_stats, KLD_stats, by="STATE")
+
+state_stats$log_density <- log(state_stats$population_density_land)
+state_stats$density_KLD <- state_stats$log_density + state_stats$KLD
+state_stats$lived_density <- exp(state_stats$density_KLD)
+```
+
+Make a new dataframe `state_density` that cleans up `state_stats` and keeps only items for display
+
+```{r}
+state_density <- 
+  state_stats %>%
+  select(STATE, state_pop, state_land_area, population_density_land, lived_density) %>%
+  mutate(density_ratio = lived_density/population_density_land)
+```
+
+
+Save data frame
+```{r}
+saveRDS(state_density, file="state_density.Rda")
+```
+
+
+
+

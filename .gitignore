@@ -1,0 +1,11 @@
+nhgis0001_csv/
+nhgis0002_csv/
+NZ_mesh_2013/
+USA2018/
+statsnz2018-census-usually-resident-population-and-age-groups-by-st-SHP/
+shapefiles/
+*.qgz
+.Rhistory
+*.svg
+urbanization-census-tract.csv
+.Rproj.user
