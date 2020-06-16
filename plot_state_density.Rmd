@@ -354,6 +354,24 @@ us_states_map
 print(hawaii_map, vp = grid::viewport(0.35, 0.1, width = 0.2, height = 0.2))
 print(alaska_map, vp = grid::viewport(.17, 0.14, width = .3, height = .3))
 print(nz_map, vp = grid::viewport(.92, 0.3, width = .25, height = .25))
+
+insets_maps = list(hawaii_map, alaska_map, nz_map)
+
+hawaii_view <- grid::viewport(0.35, 0.1, width = 0.2, height = 0.2)
+alaska_view <- grid::viewport(.17, 0.14, width = .3, height = .3)
+nz_view <- grid::viewport(.92, 0.3, width = .25, height = .25)
+
+
+insets_views = list(hawaii_view, 
+                 alaska_view,
+                 nz_view)
+
+#insets_maps = hawaii_map
+#insets_views = hawaii_view
+tmap_save(us_states_map, 
+          insets_tm = insets_maps, 
+          insets_vp = insets_views, 
+          'density_ratio_map.png')
 ```
 
 
