@@ -165,8 +165,20 @@ library(ggtext)
 library(ggplot2)
 library(ggrepel)
 
+state_density$fill_color <-  ifelse(as.numeric(state_density$density_rank) %% 2 == 0, 0, 1)
 
 ggplot(data = state_density) +
+   geom_rect(
+      aes(
+        xmin = plot_start -2 ,
+        xmax = plot_start + plot_end,
+        ymin = density_rank - 0.5,
+        ymax = density_rank + 0.5,
+        fill = factor(fill_color)
+      ),
+    alpha = 0.5,
+    show.legend = FALSE) +
+  scale_fill_manual(values = c("grey90", "white")) +
   geom_segment(data = state_density %>% filter(change_direction == 'decrease') ,
                aes(x = plot_start, 
                    xend = plot_end, 
@@ -176,7 +188,7 @@ ggplot(data = state_density) +
                color = pink_538,
                size = line_width,
                show.legend = FALSE) +
-geom_segment(data = state_density %>% filter(change_direction == 'none' ) ,
+  geom_segment(data = state_density %>% filter(change_direction == 'none' ) ,
                aes(x = plot_start, 
                    xend = plot_end, 
                    y = density_rank, 
@@ -222,16 +234,16 @@ geom_segment(data = state_density %>% filter(change_direction == 'none' ) ,
                   hjust = "right",
                   family = "Karla",
                   size = 4,
-                  nudge_x = -.2
+                  nudge_x = -.1
                   )+
   geom_text(aes(x = plot_end,  y = lived_density_rank, label = STATE),
                   hjust = "left",
                   family = "Karla",
                   size = 4,
-                  nudge_x = .2
+                  nudge_x = .15
                   )+
   annotate("text", 
-           x = plot_start -.2,  
+           x = plot_start -.1,  
            y = -0.5, 
            label = 'population density',
            hjust = "right",
@@ -241,7 +253,7 @@ geom_segment(data = state_density %>% filter(change_direction == 'none' ) ,
            size = 4,
            )+
   annotate("text", 
-           x = plot_end +.2,  
+           x = plot_end +.15,  
            y = -0.5, 
            label = 'lived density',
            hjust = "left",
@@ -250,6 +262,23 @@ geom_segment(data = state_density %>% filter(change_direction == 'none' ) ,
            fontface = "bold",
            size = 4,
            )+
+  geom_text(aes(x = plot_start-2,  y = density_rank, label = density_rank),
+                  hjust = "left",
+                  family = "Karla",
+                  size = 4,
+                  nudge_x = 0
+                  )+
+  #annotate("text", 
+  #         x = plot_start -2,  
+  #         y = state_density$density_rank, 
+  #         label = state_density$density_rank,
+  #         hjust = "left",
+  #         family = "Karla",
+  #         color = "black",
+  #         #fontface = "bold",
+  #         size = 4,
+  #         )+
+  
   
 
   labs(size = legend_title) + 
