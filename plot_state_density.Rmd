@@ -344,6 +344,11 @@ nz <- left_join(nz, state_density, by="STATE")
 # define color scale breaks
 breaks = c(0,1,2,3,4,5)
 
+blue_538_mid <- "#7485D6"
+pink_538_mid <- "#D24DB4"
+
+Mypal <- c(pink_538,pink_538_mid,purp_538,blue_538_mid, blue_538)
+
 lower_48 <- us_states %>% 
   filter(!(STATE %in% c("Alaska", "Hawaii", "Puerto Rico", "District of Columbia")))
 lower_48 <- left_join(lower_48, state_density, by="STATE")
@@ -359,22 +364,22 @@ alaska<- left_join(alaska, state_density, by="STATE")
 
 us_states_map = tm_shape(lower_48, projection =  2163) + 
   tm_borders(col = "white") +
-  tm_polygons(title = "density\nfactor",col = "log_ratio", palette = "BuPu",breaks = breaks) + 
+  tm_polygons(title = "density\nfactor",col = "log_ratio", palette = Mypal ,breaks = breaks) + 
   tm_layout(title = "where lived density is the better measure", title.position = c("center", "top"), title.fontfamily= "Karla", legend.title.fontfamily = 'Karla',  legend.text.fontfamily = 'Fira Mono', frame = FALSE, bg.color = NA,)
 
 hawaii_map = tm_shape(hawaii) + 
   tm_borders(col = "white") +
-  tm_polygons(col = "log_ratio", breaks = breaks, palette = "BuPu") +
+  tm_polygons(col = "log_ratio", breaks = breaks, palette = Mypal) +
   tm_layout(title = "", frame = FALSE, bg.color = NA, legend.show = FALSE)  
 
 alaska_map = tm_shape(alaska, projection = "EPSG:3338") + 
   tm_borders(col = "white") +
-  tm_polygons(col = "log_ratio", breaks = breaks, palette = "BuPu") +
+  tm_polygons(col = "log_ratio", breaks = breaks, palette = Mypal) +
   tm_layout(title = "", frame = FALSE, bg.color = NA, legend.show = FALSE)
 
 nz_map = tm_shape(nz, projection = "EPSG:2193") + 
   tm_borders(col = "white") +
-  tm_polygons(col = "log_ratio", breaks = breaks, palette = "BuPu") +
+  tm_polygons(col = "log_ratio", breaks = breaks, palette = Mypal) +
   tm_layout(title = "", frame = FALSE, bg.color = NA, legend.show = FALSE)
 
 
