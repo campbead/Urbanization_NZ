@@ -281,7 +281,8 @@ ggplot(data = state_density) +
   
   
 
-  labs(size = legend_title) + 
+  labs(size = legend_title,
+       caption = "Data: U.S. Census Bureau and Stats NZ | Plot: @campbead") + 
   
   labs(title = title_title ) +
   xlim(-.1,10) +
